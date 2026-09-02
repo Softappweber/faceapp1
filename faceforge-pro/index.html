@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceForge Pro - AI Face Transformation Studio</title>
+    <meta name="description" content="Professional AI face transformation with StyleGAN, SAM, and advanced neural networks">
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    
+    <!-- Core Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.10.0/dist/tf-backend-webgl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm@4.10.0/dist/tf-backend-wasm.js"></script>
+    
+    <!-- Face Detection & Mesh -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/vision_bundle.js"></script>
+    
+    <!-- ONNX Runtime for PyTorch Models -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort.min.js"></script>
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Loading AI Models...</h2>
+            <p id="loadingStatus">Initializing neural networks</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="mainApp" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🎭</span>
+                    <span class="logo-text">FaceForge Pro</span>
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-btn active" data-view="editor">Editor</button>
+                    <button class="nav-btn" data-view="gallery">Gallery</button>
+                    <button class="nav-btn" data-view="settings">Settings</button>
+                </nav>
+                <div class="user-status">
+                    <span class="status-dot"></span>
+                    <span>AI Ready</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Editor View -->
+        <div id="editorView" class="view active">
+            <div class="editor-layout">
+                <!-- Left Panel: Image Display -->
+                <div class="image-panel">
+                    <div class="image-container" id="imageContainer">
+                        <canvas id="mainCanvas"></canvas>
+                        <div class="image-overlay" id="imageOverlay">
+                            <div class="overlay-content">
+                                <div class="upload-icon">📸</div>
+                                <h3>Drop Your Photo Here</h3>
+                                <p>or click to browse</p>
+                                <button class="btn-primary" id="uploadBtn">Choose Photo</button>
+                                <button class="btn-secondary" id="cameraBtn">Use Camera</button>
+                            </div>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                        
+                        <!-- Face Detection Indicator -->
+                        <div class="face-indicator" id="faceIndicator"></div>
+                        
+                        <!-- Processing Overlay -->
+                        <div class="processing-overlay" id="processingOverlay">
+                            <div class="processing-content">
+                                <div class="processing-spinner"></div>
+                                <h3>AI Processing...</h3>
+                                <p id="processingStatus">Applying transformation</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Image Controls -->
+                    <div class="image-controls">
+                        <button class="control-btn" id="zoomInBtn">🔍+</button>
+                        <button class="control-btn" id="zoomOutBtn">🔍-</button>
+                        <button class="control-btn" id="rotateBtn">🔄</button>
+                        <button class="control-btn" id="flipBtn">↔️</button>
+                        <button class="control-btn" id="resetBtn">↩️ Reset</button>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Controls -->
+                <div class="controls-panel">
+                    <!-- Transformation Categories -->
+                    <div class="panel-section">
+                        <h3 class="section-title">AI Transformations</h3>
+                        <div class="transformation-tabs">
+                            <button class="tab-btn active" data-category="age">Age</button>
+                            <button class="tab-btn" data-category="beauty">Beauty</button>
+                            <button class="tab-btn" data-category="style">Style</button>
+                            <button class="tab-btn" data-category="effects">Effects</button>
+                        </div>
+                        
+                        <!-- Age Transformations -->
+                        <div class="transformation-grid active" id="ageCategory">
+                            <button class="transform-btn" data-transform="young">
+                                <span class="transform-icon">👶</span>
+                                <span>Younger</span>
+                            </button>
+                            <button class="transform-btn" data-transform="old">
+                                <span class="transform-icon">👴</span>
+                                <span>Older</span>
+                            </button>
+                            <button class="transform-btn" data-transform="teen">
+                                <span class="transform-icon">🧒</span>
+                                <span>Teen</span>
+                            </button>
+                            <button class="transform-btn" data-transform="adult">
+                                <span class="transform-icon">👨</span>
+                                <span>Adult</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Beauty Transformations -->
+                        <div class="transformation-grid" id="beautyCategory" style="display: none;">
+                            <button class="transform-btn" data-transform="smooth">
+                                <span class="transform-icon">✨</span>
+                                <span>Smooth Skin</span>
+                            </button>
+                            <button class="transform-btn" data-transform="glow">
+                                <span class="transform-icon">💎</span>
+                                <span>Face Glow</span>
+                            </button>
+                            <button class="transform-btn" data-transform="makeup">
+                                <span class="transform-icon">💄</span>
+                                <span>Makeup</span>
+                            </button>
+                            <button class="transform-btn" data-transform="slim">
+                                <span class="transform-icon">🎯</span>
+                                <span>Slim Face</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Style Transformations -->
+                        <div class="transformation-grid" id="styleCategory" style="display: none;">
+                            <button class="transform-btn" data-transform="anime">
+                                <span class="transform-icon">🌸</span>
+                                <span>Anime</span>
+                            </button>
+                            <button class="transform-btn" data-transform="cartoon">
+                                <span class="transform-icon">🎨</span>
+                                <span>Cartoon</span>
+                            </button>
+                            <button class="transform-btn" data-transform="painting">
+                                <span class="transform-icon">🖼️</span>
+                                <span>Painting</span>
+                            </button>
+                            <button class="transform-btn" data-transform="sketch">
+                                <span class="transform-icon">✏️</span>
+                                <span>Sketch</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Effects -->
+                        <div class="transformation-grid" id="effectsCategory" style="display: none;">
+                            <button class="transform-btn" data-transform="vintage">
+                                <span class="transform-icon">📜</span>
+                                <span>Vintage</span>
+                            </button>
+                            <button class="transform-btn" data-transform="cyberpunk">
+                                <span class="transform-icon">🤖</span>
+                                <span>Cyberpunk</span>
+                            </button>
+                            <button class="transform-btn" data-transform="fantasy">
+                                <span class="transform-icon">🧝</span>
+                                <span>Fantasy</span>
+                            </button>
+                            <button class="transform-btn" data-transform="alien">
+                                <span class="transform-icon">👽</span>
+                                <span>Alien</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Intensity Slider -->
+                    <div class="panel-section">
+                        <h3 class="section-title">Intensity</h3>
+                        <div class="slider-container">
+                            <input type="range" id="intensitySlider" min="0" max="100" value="50" class="slider">
+                            <div class="slider-labels">
+                                <span>Subtle</span>
+                                <span id="intensityValue">50%</span>
+                                <span>Strong</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Model Selection -->
+                    <div class="panel-section">
+                        <h3 class="section-title">AI Model</h3>
+                        <select id="modelSelect" class="model-select">
+                            <option value="auto">Auto (Recommended)</option>
+                            <option value="stylegan3">StyleGAN3 (High Quality)</option>
+                            <option value="sam">SAM (Fast)</option>
+                            <option value="gfpgan">GFPGAN (Face Restoration)</option>
+                            <option value="codeformer">CodeFormer (Enhanced)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="panel-section">
+                        <button class="btn-primary full-width" id="applyBtn">Apply Transformation</button>
+                        <div class="action-grid">
+                            <button class="btn-secondary" id="downloadBtn">💾 Download</button>
+                            <button class="btn-secondary" id="shareBtn">🔗 Share</button>
+                            <button class="btn-secondary" id="saveBtn">📁 Save</button>
+                        </div>
+                    </div>
+                    
+                    <!-- History -->
+                    <div class="panel-section">
+                        <h3 class="section-title">History</h3>
+                        <div class="history-list" id="historyList">
+                            <!-- History items will appear here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery View -->
+        <div id="galleryView" class="view" style="display: none;">
+            <div class="gallery-container">
+                <h2>Your Transformations</h2>
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- Gallery items -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="settingsView" class="view" style="display: none;">
+            <div class="settings-container">
+                <h2>Settings</h2>
+                <div class="settings-group">
+                    <label>Default Model</label>
+                    <select id="defaultModel">
+                        <option value="auto">Auto</option>
+                        <option value="stylegan3">StyleGAN3</option>
+                        <option value="sam">SAM</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>Processing Quality</label>
+                    <select id="qualitySetting">
+                        <option value="high">High Quality</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low (Fast)</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>
+                        <input type="checkbox" id="saveHistory" checked>
+                        Save transformation history
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <h3>Take a Photo</h3>
+            <video id="cameraVideo" autoplay playsinline></video>
+            <div class="modal-actions">
+                <button class="btn-primary" id="captureBtn">📸 Capture</button>
+                <button class="btn-secondary" id="closeCameraBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/transformers.js"></script>
+    <script src="js/api-services.js"></script>
+    <script src="js/utils.js"></script>
+</body>
+</html>

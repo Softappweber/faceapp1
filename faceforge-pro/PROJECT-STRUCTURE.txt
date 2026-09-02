@@ -1,0 +1,16 @@
+faceforge-pro/
+├── index.html (main app)
+├── css/
+│   └── style.css
+├── js/
+│   ├── app.js
+│   ├── models.js
+│   ├── transformers.js
+│   ├── api-services.js
+│   └── utils.js
+├── models/
+│   ├── face-detection/
+│   └── transformers/
+├── service-worker.js
+├── manifest.json
+└── README.md
