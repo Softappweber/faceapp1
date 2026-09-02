@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🚀 SoloDS - GitHub Auto-Deploy Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --border: #30363d;
+            --text: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79c0ff;
+            --success: #3fb950;
+            --success-bg: #1a3a2a;
+            --danger: #f85149;
+            --warning: #d29922;
+            --radius: 12px;
+            --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .header-left h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-left h1 span {
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge {
+            background: var(--success);
+            color: var(--bg);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            -webkit-text-fill-color: var(--bg);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 160px);
+            min-height: 600px;
+        }
+
+        @media (max-width: 1000px) {
+            .grid {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: auto;
+            }
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        /* Textarea */
+        .file-content {
+            width: 100%;
+            flex: 1;
+            min-height: 300px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            padding: 14px;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s;
+            line-height: 1.6;
+        }
+
+        .file-content:focus {
+            border-color: var(--accent);
+        }
+
+        .file-content::placeholder {
+            color: var(--text-secondary);
+            font-family: var(--font);
+        }
+
+        /* File List - with folder structure */
+        .file-list-container {
+            flex: 1;
+            overflow-y: auto;
+            margin: 8px -6px 0 -6px;
+            padding: 0 6px;
+        }
+
+        .file-list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .file-list-container::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 4px;
+        }
+        .file-list-container::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .file-tree {
+            font-size: 0.85rem;
+        }
+
+        .folder-item {
+            margin: 2px 0;
+        }
+
+        .folder-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .folder-header:hover {
+            background: var(--bg);
+        }
+
+        .folder-header .arrow {
+            transition: transform 0.2s;
+            font-size: 0.7rem;
+        }
+
+        .folder-header .arrow.open {
+            transform: rotate(90deg);
+        }
+
+        .folder-children {
+            margin-left: 20px;
+            border-left: 1px solid var(--border);
+            padding-left: 12px;
+            display: none;
+        }
+
+        .folder-children.open {
+            display: block;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.15s;
+            gap: 8px;
+        }
+
+        .file-item:hover {
+            background: var(--bg);
+        }
+
+        .file-item .file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .file-item .file-icon {
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .file-item .file-name {
+            font-size: 0.82rem;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-item .file-path {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .file-item .file-size {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .file-checkbox {
+            accent-color: var(--accent);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 7px 16px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--font);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: var(--bg);
+        }
+        .btn-success:hover {
+            opacity: 0.85;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            opacity: 0.85;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: var(--bg);
+        }
+        .btn-warning:hover {
+            opacity: 0.85;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-sm {
+            padding: 3px 10px;
+            font-size: 0.7rem;
+        }
+
+        .btn-xs {
+            padding: 2px 8px;
+            font-size: 0.65rem;
+        }
+
+        /* Action bar */
+        .action-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .action-bar .btn {
+            flex: 1;
+            justify-content: center;
+            min-width: 80px;
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            padding: 8px 0;
+        }
+
+        .stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stats .num {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* Progress */
+        .progress-bar {
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 200px;
+            color: var(--text-secondary);
+            text-align: center;
+            gap: 8px;
+        }
+
+        .empty-state .icon {
+            font-size: 2.5rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 14px 22px;
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(120px);
+            opacity: 0;
+            transition: all 0.4s ease;
+            z-index: 999;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast .icon {
+            font-size: 1.3rem;
+        }
+
+        .toast .msg {
+            font-size: 0.85rem;
+        }
+
+        /* Status indicator */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .status-dot.ready { background: var(--success); }
+        .status-dot.processing { background: var(--warning); animation: pulse 1s infinite; }
+        .status-dot.error { background: var(--danger); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .panel { padding: 12px; }
+            .file-content { min-height: 200px; font-size: 0.7rem; }
+            .header-left h1 { font-size: 1.1rem; }
+            .action-bar .btn { font-size: 0.7rem; padding: 6px 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>
+                🚀 <span>GitHub Auto-Deploy</span>
+                <span class="badge">SoloDS</span>
+            </h1>
+            <span style="font-size:0.75rem;color:var(--text-secondary);">
+                <span class="status-dot ready" id="statusDot"></span>
+                <span id="statusText">Ready</span>
+            </span>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-success" id="deployGitHubBtn">
+                <span>📤</span> Deploy to GitHub
+            </button>
+            <button class="btn btn-warning" id="downloadZipBtn">
+                <span>📦</span> Download ZIP
+            </button>
+            <button class="btn btn-outline" id="clearBtn">
+                <span>🗑️</span> Clear
+            </button>
+        </div>
+    </header>
+
+    <!-- Grid -->
+    <div class="grid">
+
+        <!-- Left Panel: Input -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>📝 Paste Your Project Text</span>
+                <span style="font-weight:400;text-transform:none;font-size:0.7rem;" id="charCount">0 chars</span>
+            </div>
+            <textarea class="file-content" id="fileInput" placeholder="Paste the content of your text file here...&#10;&#10;The tool will automatically extract ALL files with their exact names and folder structure."></textarea>
+
+            <div class="action-bar">
+                <button class="btn btn-primary" id="extractBtn">🔍 Extract Files</button>
+                <button class="btn btn-outline" id="sampleBtn">📥 Sample</button>
+                <button class="btn btn-outline" id="pasteBtn">📋 Paste</button>
+            </div>
+
+            <div class="stats">
+                <span>📁 Files: <span class="num" id="fileCount">0</span></span>
+                <span>📂 Folders: <span class="num" id="folderCount">0</span></span>
+                <span>📊 Size: <span class="num" id="totalSize">0 KB</span></span>
+            </div>
+
+            <div class="progress-bar">
+                <div class="fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Right Panel: File Tree -->
+        <div class="panel">
+            <div class="panel-title">
+                <span>📂 Project Structure</span>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn btn-sm btn-outline" id="selectAllBtn">Select All</button>
+                    <button class="btn btn-sm btn-outline" id="deselectAllBtn">Deselect</button>
+                </div>
+            </div>
+
+            <div class="file-list-container" id="fileListContainer">
+                <div class="empty-state" id="emptyState">
+                    <div class="icon">📂</div>
+                    <p>No files extracted yet</p>
+                    <p style="font-size:0.8rem;color:var(--text-secondary);">
+                        Paste content and click "Extract Files"
+                    </p>
+                </div>
+                <div class="file-tree" id="fileTree" style="display:none;"></div>
+            </div>
+
+            <div class="action-bar" style="margin-top:8px;">
+                <button class="btn btn-success btn-sm" id="downloadSelectedBtn">⬇️ Download Selected</button>
+                <button class="btn btn-primary btn-sm" id="copyGitignoreBtn">📋 Copy .gitignore</button>
+                <button class="btn btn-outline btn-sm" id="viewReadmeBtn">📖 View README</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+    <span class="icon">✅</span>
+    <span class="msg" id="toastMessage">Done!</span>
+</div>
+
+<script>
+// ============================================================
+// ULTIMATE FILE EXTRACTOR - SoloDS
+// ============================================================
+
+// --- State ---
+let files = [];
+let fileIdCounter = 0;
+let extractedText = '';
+
+// --- DOM Refs ---
+const fileInput = document.getElementById('fileInput');
+const extractBtn = document.getElementById('extractBtn');
+const fileTree = document.getElementById('fileTree');
+const emptyState = document.getElementById('emptyState');
+const fileCount = document.getElementById('fileCount');
+const folderCount = document.getElementById('folderCount');
+const totalSize = document.getElementById('totalSize');
+const charCount = document.getElementById('charCount');
+const progressFill = document.getElementById('progressFill');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const toast = document.getElementById('toast');
+const toastMessage = document.getElementById('toastMessage');
+
+// --- Utility ---
+function getFileExtension(filename) {
+    const parts = filename.split('.');
+    return parts.length > 1 ? parts.pop() : '';
+}
+
+function getFileIcon(filename) {
+    const ext = getFileExtension(filename).toLowerCase();
+    const icons = {
+        html: '🌐', css: '🎨', js: '⚡', json: '📋', md: '📝',
+        txt: '📄', xml: '📰', svg: '🖼️', png: '🖼️', jpg: '🖼️',
+        jpeg: '🖼️', gif: '🖼️', webp: '🖼️', ico: '🖼️',
+        gitignore: '🔒', env: '🔑', yaml: '📃', yml: '📃',
+        toml: '📃', sh: '💻', bat: '💻', py: '🐍', rb: '💎',
+        php: '🐘', java: '☕', cpp: '⚙️', c: '⚙️', go: '🐹',
+        rs: '🦀', vue: '🟢', ts: '🔵', jsx: '⚛️', tsx: '⚛️',
+        scss: '🎨', less: '🎨', lock: '🔒', config: '⚙️',
+        ini: '⚙️', conf: '⚙️', dockerfile: '🐳', 
+    };
+    return icons[ext] || '📄';
+}
+
+function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getPathParts(path) {
+    return path.split('/').filter(p => p.length > 0);
+}
+
+function setStatus(state, text) {
+    statusDot.className = 'status-dot ' + state;
+    statusText.textContent = text;
+}
+
+function showToast(message, icon = '✅') {
+    toastMessage.textContent = message;
+    document.querySelector('.toast .icon').textContent = icon;
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// --- Extract Files with EXACT names and folder structure ---
+function extractFiles(text) {
+    const lines = text.split('\n');
+    const extracted = [];
+    let currentFile = null;
+    let currentContent = [];
+    let inFile = false;
+    let inCodeBlock = false;
+    let fileLineNumber = 0;
+
+    // Pattern: ### File: path/to/file.ext or ### File: filename.ext
+    const filePattern = /^###?\s*File\s*:\s*(.+?)(?:\s*\([^)]*\))?\s*$/i;
+    // Alternative: **File:** path/to/file.ext
+    const filePatternAlt = /^\*\*File\*\*:\s*(.+?)\s*$/i;
+    // Code block: ```language
+    const codeBlockStart = /^```\w*$/;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+
+        // Check for file declaration
+        let match = trimmed.match(filePattern);
+        if (!match) {
+            match = trimmed.match(filePatternAlt);
+        }
+
+        if (match) {
+            // Save previous file
+            if (currentFile && currentContent.length > 0) {
+                let content = currentContent.join('\n');
+                // Clean up code block markers
+                content = content.replace(/^```\w*\n/, '').replace(/\n```$/, '').trim();
+                if (content) {
+                    extracted.push({
+                        id: fileIdCounter++,
+                        name: currentFile.split('/').pop(),
+                        path: currentFile.startsWith('/') ? currentFile : '/' + currentFile,
+                        content: content,
+                        folder: currentFile.includes('/') ? currentFile.split('/').slice(0, -1).join('/') : '',
+                    });
+                }
+            }
+            currentFile = match[1].trim();
+            currentContent = [];
+            inFile = true;
+            inCodeBlock = false;
+            fileLineNumber = i;
+            continue;
+        }
+
+        // Track code blocks
+        if (inFile && codeBlockStart.test(trimmed)) {
+            inCodeBlock = !inCodeBlock;
+            if (!inCodeBlock) continue; // Skip closing marker
+        }
+
+        // Collect content
+        if (inFile) {
+            // Skip if it's just a file declaration line
+            if (trimmed.match(filePattern) || trimmed.match(filePatternAlt)) continue;
+            currentContent.push(line);
+        }
+    }
+
+    // Save last file
+    if (currentFile && currentContent.length > 0) {
+        let content = currentContent.join('\n');
+        content = content.replace(/^```\w*\n/, '').replace(/\n```$/, '').trim();
+        if (content) {
+            extracted.push({
+                id: fileIdCounter++,
+                name: currentFile.split('/').pop(),
+                path: currentFile.startsWith('/') ? currentFile : '/' + currentFile,
+                content: content,
+                folder: currentFile.includes('/') ? currentFile.split('/').slice(0, -1).join('/') : '',
+            });
+        }
+    }
+
+    // If no files found, try fallback: detect code blocks
+    if (extracted.length === 0) {
+        const codeBlocks = text.match(/```(\w+)?\n([\s\S]*?)```/g);
+        if (codeBlocks) {
+            codeBlocks.forEach((block, idx) => {
+                const langMatch = block.match(/```(\w+)?/);
+                const lang = langMatch && langMatch[1] ? langMatch[1] : 'txt';
+                const content = block.replace(/```\w*\n/, '').replace(/```$/, '').trim();
+                // Try to find a filename before the code block
+                const linesBefore = text.substring(0, text.indexOf(block)).split('\n');
+                let filename = null;
+                for (let j = linesBefore.length - 1; j >= Math.max(0, linesBefore.length - 10); j--) {
+                    const nameMatch = linesBefore[j].match(/^###?\s*File\s*:\s*(.+?)$/i);
+                    if (nameMatch) {
+                        filename = nameMatch[1].trim();
+                        break;
+                    }
+                    const boldMatch = linesBefore[j].match(/^\*\*File\*\*:\s*(.+?)$/i);
+                    if (boldMatch) {
+                        filename = boldMatch[1].trim();
+                        break;
+                    }
+                }
+                if (!filename) {
+                    filename = `file-${idx + 1}.${lang}`;
+                }
+                extracted.push({
+                    id: fileIdCounter++,
+                    name: filename.split('/').pop(),
+                    path: filename.startsWith('/') ? filename : '/' + filename,
+                    content: content,
+                    folder: filename.includes('/') ? filename.split('/').slice(0, -1).join('/') : '',
+                });
+            });
+        }
+    }
+
+    return extracted;
+}
+
+// --- Build File Tree ---
+function buildFileTree(fileList) {
+    const tree = {};
+
+    fileList.forEach(file => {
+        const parts = getPathParts(file.path);
+        let current = tree;
+        parts.forEach((part, index) => {
+            if (index === parts.length - 1) {
+                // File
+                if (!current._files) current._files = [];
+                current._files.push(file);
+            } else {
+                // Folder
+                if (!current[part]) current[part] = {};
+                current = current[part];
+            }
+        });
+    });
+
+    return tree;
+}
+
+// --- Render File Tree ---
+function renderFileTree(fileList) {
+    const container = document.getElementById('fileListContainer');
+    const treeEl = fileTree;
+    const empty = emptyState;
+
+    if (fileList.length === 0) {
+        treeEl.style.display = 'none';
+        empty.style.display = 'flex';
+        fileCount.textContent = '0';
+        folderCount.textContent = '0';
+        totalSize.textContent = '0 KB';
+        return;
+    }
+
+    treeEl.style.display = 'block';
+    empty.style.display = 'none';
+
+    const tree = buildFileTree(fileList);
+    let totalBytes = 0;
+    fileList.forEach(f => totalBytes += new Blob([f.content]).size);
+
+    fileCount.textContent = fileList.length;
+    
+    // Count folders
+    const folderSet = new Set();
+    fileList.forEach(f => {
+        if (f.folder) {
+            const parts = getPathParts(f.folder);
+            let current = '';
+            parts.forEach(p => {
+                current += '/' + p;
+                folderSet.add(current);
+            });
+        }
+    });
+    folderCount.textContent = folderSet.size;
+    totalSize.textContent = formatSize(totalBytes);
+
+    function renderNode(node, path = '') {
+        let html = '';
+        const keys = Object.keys(node).filter(k => k !== '_files');
+
+        // Render folders
+        keys.forEach(key => {
+            const folderPath = path ? path + '/' + key : key;
+            const children = node[key];
+            const hasFiles = children._files && children._files.length > 0;
+            const hasSubfolders = Object.keys(children).filter(k => k !== '_files').length > 0;
+
+            if (hasFiles || hasSubfolders) {
+                html += `
+                    <div class="folder-item">
+                        <div class="folder-header" data-path="${folderPath}">
+                            <span class="arrow">▶</span>
+                            <span>📁 ${key}</span>
+                            <span style="font-size:0.65rem;color:var(--text-secondary);margin-left:auto;">
+                                ${children._files ? children._files.length : 0} files
+                            </span>
+                        </div>
+                        <div class="folder-children" data-path="${folderPath}">
+                            ${renderNode(children, folderPath)}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Render files in this folder
+        if (node._files) {
+            node._files.forEach(file => {
+                const size = new Blob([file.content]).size;
+                const icon = getFileIcon(file.name);
+                html += `
+                    <div class="file-item" data-id="${file.id}">
+                        <div class="file-info">
+                            <input type="checkbox" class="file-checkbox" data-id="${file.id}" checked>
+                            <span class="file-icon">${icon}</span>
+                            <span class="file-name">${file.name}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span class="file-size">${formatSize(size)}</span>
+                            <div class="file-actions">
+                                <button class="btn btn-success btn-xs download-single" data-id="${file.id}">⬇</button>
+                                <button class="btn btn-danger btn-xs remove-single" data-id="${file.id}">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        return html;
+    }
+
+    treeEl.innerHTML = renderNode(tree);
+
+    // --- Event Listeners ---
+
+    // Folder toggle
+    document.querySelectorAll('.folder-header').forEach(header => {
+        header.addEventListener('click', function() {
+            const path = this.dataset.path;
+            const children = document.querySelector(`.folder-children[data-path="${path}"]`);
+            if (children) {
+                children.classList.toggle('open');
+                this.querySelector('.arrow').classList.toggle('open');
+            }
+        });
+        // Auto-open first level
+        const children = document.querySelector(`.folder-children[data-path="${header.dataset.path}"]`);
+        if (children && !header.dataset.path.includes('/')) {
+            children.classList.add('open');
+            header.querySelector('.arrow').classList.add('open');
+        }
+    });
+
+    // Download single
+    document.querySelectorAll('.download-single').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = parseInt(this.dataset.id);
+            const file = files.find(f => f.id === id);
+            if (file) downloadFile(file);
+        });
+    });
+
+    // Remove single
+    document.querySelectorAll('.remove-single').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const id = parseInt(this.dataset.id);
+            files = files.filter(f => f.id !== id);
+            renderFileTree(files);
+            showToast('File removed', '🗑️');
+        });
+    });
+
+    // Checkbox toggle
+    document.querySelectorAll('.file-checkbox').forEach(cb => {
+        cb.addEventListener('change', function() {
+            // Update selection state
+        });
+    });
+
+    // File item click to toggle checkbox
+    document.querySelectorAll('.file-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+                const cb = this.querySelector('.file-checkbox');
+                if (cb) cb.checked = !cb.checked;
+            }
+        });
+    });
+
+    // Store files for later use
+    window._files = files;
+}
+
+// --- Download ---
+function downloadFile(file) {
+    const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${file.name}`, '⬇️');
+}
+
+// --- Download Selected ---
+function downloadSelected() {
+    const checked = document.querySelectorAll('.file-checkbox:checked');
+    if (checked.length === 0) {
+        showToast('No files selected', '⚠️');
+        return;
+    }
+
+    const selected = files.filter(f => {
+        const cb = document.querySelector(`.file-checkbox[data-id="${f.id}"]`);
+        return cb && cb.checked;
+    });
+
+    if (selected.length === 0) {
+        showToast('No files selected', '⚠️');
+        return;
+    }
+
+    if (selected.length === 1) {
+        downloadFile(selected[0]);
+        return;
+    }
+
+    // Multiple: download one by one
+    let i = 0;
+    function downloadNext() {
+        if (i >= selected.length) {
+            showToast(`Downloaded ${selected.length} files`, '✅');
+            return;
+        }
+        downloadFile(selected[i]);
+        i++;
+        setTimeout(downloadNext, 400);
+    }
+    downloadNext();
+}
+
+// --- Download ZIP ---
+function downloadZip() {
+    if (files.length === 0) {
+        showToast('No files to download', '⚠️');
+        return;
+    }
+
+    // Use JSZip for ZIP creation
+    if (typeof JSZip !== 'undefined') {
+        const zip = new JSZip();
+        files.forEach(f => {
+            // Preserve folder structure
+            const path = f.path.startsWith('/') ? f.path.substring(1) : f.path;
+            zip.file(path, f.content);
+        });
+
+        setStatus('processing', 'Creating ZIP...');
+        progressFill.style.width = '60%';
+
+        zip.generateAsync({ type: 'blob' }).then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `project-${Date.now()}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            progressFill.style.width = '100%';
+            setTimeout(() => progressFill.style.width = '0%', 800);
+            setStatus('ready', 'Ready');
+            showToast(`Downloaded ${files.length} files as ZIP`, '📦');
+        });
+    } else {
+        // Fallback: download all individually
+        showToast('JSZip not loaded, downloading individually...', '📦');
+        let i = 0;
+        function downloadNext() {
+            if (i >= files.length) {
+                showToast(`Downloaded ${files.length} files`, '✅');
+                return;
+            }
+            downloadFile(files[i]);
+            i++;
+            setTimeout(downloadNext, 400);
+        }
+        downloadNext();
+    }
+}
+
+// --- Deploy to GitHub (simulated) ---
+function deployToGitHub() {
+    if (files.length === 0) {
+        showToast('No files to deploy', '⚠️');
+        return;
+    }
+
+    setStatus('processing', 'Preparing for GitHub...');
+    progressFill.style.width = '30%';
+
+    // Generate GitHub-ready structure
+    const fileStructure = files.map(f => ({
+        path: f.path.startsWith('/') ? f.path.substring(1) : f.path,
+        content: f.content
+    }));
+
+    // Create a deployable package
+    setTimeout(() => {
+        progressFill.style.width = '70%';
+        // Generate a GitHub-ready message
+        const message = `
+🚀 GitHub Deployment Package Ready!
+
+📁 Total Files: ${files.length}
+📂 Folder Structure: ${new Set(files.map(f => f.folder)).size} folders
+📊 Total Size: ${formatSize(files.reduce((acc, f) => acc + new Blob([f.content]).size, 0))}
+
+📋 Files:
+${files.map(f => `  - ${f.path}`).join('\n')}
+
+✅ Ready to deploy to GitHub!
+1. Download the ZIP
+2. Extract to your repo
+3. Push to GitHub
+        `.trim();
+
+        // Show in a modal or alert
+        const deployMsg = encodeURIComponent(message);
+        const blob = new Blob([message], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'github-deploy-info.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        progressFill.style.width = '100%';
+        setTimeout(() => progressFill.style.width = '0%', 800);
+        setStatus('ready', 'Ready');
+        showToast(`Ready to deploy ${files.length} files to GitHub!`, '🚀');
+    }, 500);
+}
+
+// --- Copy .gitignore ---
+function copyGitignore() {
+    const gitignore = `# Dependencies
+node_modules/
+vendor/
+*.log
+
+# Environment
+.env
+.env.local
+
+# Build
+dist/
+build/
+*.min.js
+*.min.css
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc
+*.tmp
+*.temp
+coverage/
+.nyc_output/
+`;
+    
+    navigator.clipboard.writeText(gitignore).then(() => {
+        showToast('.gitignore copied to clipboard!', '📋');
+    }).catch(() => {
+        // Fallback: create a download
+        const blob = new Blob([gitignore], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = '.gitignore';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('.gitignore downloaded!', '📋');
+    });
+}
+
+// --- View README ---
+function viewReadme() {
+    const readme = `# 🚀 Project
+
+## Files Structure
+
+${files.map(f => `- ${f.path}`).join('\n')}
+
+## Total Files: ${files.length}
+
+## Deployed with SoloDS Auto-Deploy Tool
+`;
+    navigator.clipboard.writeText(readme).then(() => {
+        showToast('README structure copied to clipboard!', '📖');
+    }).catch(() => {
+        const blob = new Blob([readme], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'README.md';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('README.md downloaded!', '📖');
+    });
+}
+
+// --- Extract Handler ---
+function handleExtract() {
+    const text = fileInput.value;
+    if (!text.trim()) {
+        showToast('Please paste some content first', '⚠️');
+        return;
+    }
+
+    setStatus('processing', 'Extracting files...');
+    progressFill.style.width = '30%';
+
+    const extracted = extractFiles(text);
+
+    if (extracted.length === 0) {
+        progressFill.style.width = '100%';
+        setTimeout(() => progressFill.style.width = '0%', 800);
+        setStatus('error', 'No files found');
+        showToast('No files found in the content', '⚠️');
+        return;
+    }
+
+    // Merge with existing files, avoiding duplicates by path
+    const existingPaths = new Set(files.map(f => f.path));
+    let added = 0;
+    extracted.forEach(f => {
+        if (!existingPaths.has(f.path)) {
+            files.push(f);
+            existingPaths.add(f.path);
+            added++;
+        }
+    });
+
+    renderFileTree(files);
+    progressFill.style.width = '100%';
+    setTimeout(() => progressFill.style.width = '0%', 800);
+    setStatus('ready', 'Ready');
+    showToast(`Extracted ${added} new files (${extracted.length} total found)`, '📁');
+}
+
+// --- Sample Data ---
+function loadSample() {
+    const sample = `### File: index.html
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceForge Pro</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <h1>Welcome to FaceForge Pro</h1>
+    <script src="js/app.js"></script>
+</body>
+</html>
+\`\`\`
+
+### File: css/main.css
+\`\`\`css
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f0f0f5;
+    color: #1a1a2e;
+}
+
+h1 {
+    color: #6C63FF;
+    text-align: center;
+    padding: 40px;
+}
+\`\`\`
+
+### File: js/app.js
+\`\`\`javascript
+console.log('FaceForge Pro initialized!');
+
+class App {
+    constructor() {
+        this.init();
+    }
+    
+    init() {
+        console.log('App ready');
+    }
+}
+
+new App();
+\`\`\`
+
+### File: models/hairstyles.json
+\`\`\`json
+{
+    "hairstyles": [
+        { "id": "bald", "name": "Bald", "icon": "🦲" },
+        { "id": "short", "name": "Short", "icon": "💇" },
+        { "id": "long", "name": "Long", "icon": "👩" },
+        { "id": "curly", "name": "Curly", "icon": "🦱" }
+    ]
+}
+\`\`\`
+
+### File: README.md
+\`\`\`markdown
+# FaceForge Pro
+
+AI-powered hair transformation tool.
+
+## Features
+- Upload photos
+- Try different hairstyles
+- Change hair colors
+- Download results
+
+## Tech Stack
+- HTML, CSS, JavaScript
+- TensorFlow.js
+- MediaPipe Face Mesh
+
+## Deployment
+Deployed with SoloDS Auto-Deploy Tool
+\`\`\``;
+
+    fileInput.value = sample;
+    charCount.textContent = sample.length + ' chars';
+    showToast('Sample loaded! Click "Extract Files"', '📥');
+}
+
+// --- Paste from Clipboard ---
+async function pasteFromClipboard() {
+    try {
+        const text = await navigator.clipboard.readText();
+        fileInput.value = text;
+        charCount.textContent = text.length + ' chars';
+        showToast('Pasted from clipboard!', '📋');
+    } catch (err) {
+        showToast('Failed to paste from clipboard', '❌');
+    }
+}
+
+// --- Clear ---
+function clearAll() {
+    if (files.length === 0 && !fileInput.value) {
+        showToast('Nothing to clear', '👀');
+        return;
+    }
+    if (files.length > 0 && !confirm('Clear all extracted files?')) return;
+    files = [];
+    fileInput.value = '';
+    renderFileTree(files);
+    charCount.textContent = '0 chars';
+    progressFill.style.width = '0%';
+    setStatus('ready', 'Ready');
+    showToast('Cleared everything', '🗑️');
+}
+
+// --- Select/Deselect ---
+function selectAllFiles() {
+    document.querySelectorAll('.file-checkbox').forEach(cb => cb.checked = true);
+    showToast('Selected all files', '☑️');
+}
+
+function deselectAllFiles() {
+    document.querySelectorAll('.file-checkbox').forEach(cb => cb.checked = false);
+    showToast('Deselected all files', '☐');
+}
+
+// --- Event Listeners ---
+extractBtn.addEventListener('click', handleExtract);
+document.getElementById('sampleBtn').addEventListener('click', loadSample);
+document.getElementById('pasteBtn').addEventListener('click', pasteFromClipboard);
+document.getElementById('clearBtn').addEventListener('click', clearAll);
+document.getElementById('selectAllBtn').addEventListener('click', selectAllFiles);
+document.getElementById('deselectAllBtn').addEventListener('click', deselectAllFiles);
+document.getElementById('downloadSelectedBtn').addEventListener('click', downloadSelected);
+document.getElementById('downloadZipBtn').addEventListener('click', downloadZip);
+document.getElementById('deployGitHubBtn').addEventListener('click', deployToGitHub);
+document.getElementById('copyGitignoreBtn').addEventListener('click', copyGitignore);
+document.getElementById('viewReadmeBtn').addEventListener('click', viewReadme);
+
+// --- Auto-extract on Ctrl+Enter ---
+fileInput.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleExtract();
+    }
+});
+
+fileInput.addEventListener('input', () => {
+    charCount.textContent = fileInput.value.length + ' chars';
+});
+
+// --- Load JSZip ---
+function loadJSZip() {
+    if (typeof JSZip === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        document.head.appendChild(script);
+        script.onload = () => console.log('JSZip loaded');
+    }
+}
+loadJSZip();
+
+// --- Init ---
+renderFileTree(files);
+setStatus('ready', 'Ready');
+showToast('🚀 Ready! Paste your project text and extract.', '🚀');
+</script>
+
+</body>
+</html>
